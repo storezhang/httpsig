@@ -8,7 +8,7 @@ import (
 )
 
 type signerSymmetric struct {
-	signer       symmetricSigner
+	signer       symmetric
 	makeDigest   bool
 	dAlgo        DigestAlgorithm
 	headers      []string
@@ -33,7 +33,7 @@ func (ss *signerSymmetric) SignRequest(privateKey crypto.PrivateKey, keyId strin
 	if err != nil {
 		return err
 	}
-	setSignatureHeader(req.Header, string(ss.targetHeader), ss.prefix, keyId, ss.signer.String(), enc, ss.headers, ss.created, ss.expires)
+	setSignatureHeader(req.Header, string(ss.targetHeader), ss.prefix, keyId, ss.signer.String(), enc, ss.created, ss.expires, ss.headers...)
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (ss *signerSymmetric) SignResponse(pKey crypto.PrivateKey, pubKeyId string,
 	if err != nil {
 		return err
 	}
-	setSignatureHeader(r.Header(), string(ss.targetHeader), ss.prefix, pubKeyId, ss.signer.String(), enc, ss.headers, ss.created, ss.expires)
+	setSignatureHeader(r.Header(), string(ss.targetHeader), ss.prefix, pubKeyId, ss.signer.String(), enc, ss.created, ss.expires, ss.headers...)
 	return nil
 }
 
@@ -70,9 +70,9 @@ func (ss *signerSymmetric) signSignature(pKey crypto.PrivateKey, s string) (stri
 }
 
 func (ss *signerSymmetric) signatureString(r *http.Request) (string, error) {
-	return signatureString(r.Header, ss.headers, addRequestTarget(r), ss.created, ss.expires)
+	return signatureString(r.Header, addRequestTarget(r), ss.created, ss.expires, ss.headers...)
 }
 
 func (ss *signerSymmetric) signatureStringResponse(r http.ResponseWriter) (string, error) {
-	return signatureString(r.Header(), ss.headers, requestTargetNotPermitted, ss.created, ss.expires)
+	return signatureString(r.Header(), requestTargetNotPermitted, ss.created, ss.expires, ss.headers...)
 }

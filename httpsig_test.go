@@ -71,6 +71,19 @@ var (
 	testEd25519PublicKey  ed25519.PublicKey
 )
 
+func readFullFromCrypto(b []byte) error {
+	n := len(b)
+	t := 0
+	for t < n {
+		d, err := rand.Reader.Read(b[t:])
+		if d == 0 && err != nil {
+			return err
+		}
+		t += d
+	}
+	return nil
+}
+
 func init() {
 	var err error
 	privKey, err = rsa.GenerateKey(rand.Reader, 2048)
@@ -156,7 +169,7 @@ func init() {
 			prefs:                      []Algorithm{HMAC_SHA256},
 			digestAlg:                  DigestSha256,
 			headers:                    []string{"Date", "Digest"},
-			body:                       []byte("I've never ever been to paradise I've never ever seen no angel'asymmetricSigner eyes You'll never ever let this magic die No matter where you are, you are my lucky star."),
+			body:                       []byte("I've never ever been to paradise I've never ever seen no angel's eyes You'll never ever let this magic die No matter where you are, you are my lucky star."),
 			scheme:                     Signature,
 			privKey:                    macKey,
 			pubKey:                     macKey,
@@ -273,7 +286,7 @@ func init() {
 }
 
 func toSignatureParameter(k, v string) string {
-	return fmt.Sprintf("%asymmetricSigner%asymmetricSigner%asymmetricSigner%asymmetricSigner%asymmetricSigner", k, parameterKVSeparater, parameterValueDelimiter, v, parameterValueDelimiter)
+	return fmt.Sprintf("%s%s%s%s%s", k, parameterKVSeparator, parameterValueDelimiter, v, parameterValueDelimiter)
 }
 
 func toHeaderSignatureParameters(k string, vals []string) string {
@@ -283,22 +296,22 @@ func toHeaderSignatureParameters(k string, vals []string) string {
 	v := strings.Join(vals, headerParameterValueDelimiter)
 	k = strings.ToLower(k)
 	v = strings.ToLower(v)
-	return fmt.Sprintf("%asymmetricSigner%asymmetricSigner%asymmetricSigner%asymmetricSigner%asymmetricSigner", k, parameterKVSeparater, parameterValueDelimiter, v, parameterValueDelimiter)
+	return fmt.Sprintf("%s%s%s%s%s", k, parameterKVSeparator, parameterValueDelimiter, v, parameterValueDelimiter)
 }
 
 func TestSignerRequest(t *testing.T) {
 	testFn := func(t *testing.T, test httpsigTest) {
 		s, a, err := NewSigner(test.prefs, test.digestAlg, test.headers, test.scheme, 0)
 		if err != nil {
-			t.Fatalf("%asymmetricSigner", err)
+			t.Fatalf("%s", err)
 		}
 		if a != test.expectedAlgorithm {
-			t.Fatalf("got %asymmetricSigner, want %asymmetricSigner", a, test.expectedAlgorithm)
+			t.Fatalf("got %s, want %s", a, test.expectedAlgorithm)
 		}
 		// Test request signing
 		req, err := http.NewRequest(testMethod, testUrl, nil)
 		if err != nil {
-			t.Fatalf("%asymmetricSigner", err)
+			t.Fatalf("%s", err)
 		}
 		req.Header.Set("Date", testDate)
 		if test.body == nil {
@@ -306,30 +319,30 @@ func TestSignerRequest(t *testing.T) {
 		}
 		err = s.SignRequest(test.privKey, test.pubKeyId, req, test.body)
 		if err != nil {
-			t.Fatalf("%asymmetricSigner", err)
+			t.Fatalf("%s", err)
 		}
 		vals, ok := req.Header[string(test.scheme)]
 		if !ok {
-			t.Fatalf("not in header %asymmetricSigner", test.scheme)
+			t.Fatalf("not in header %s", test.scheme)
 		}
 		if len(vals) != 1 {
-			t.Fatalf("too many in header %asymmetricSigner: %d", test.scheme, len(vals))
+			t.Fatalf("too many in header %s: %d", test.scheme, len(vals))
 		}
 		if p := toSignatureParameter(keyIdParameter, test.pubKeyId); !strings.Contains(vals[0], p) {
-			t.Fatalf("%asymmetricSigner\ndoes not contain\n%asymmetricSigner", vals[0], p)
+			t.Fatalf("%s\ndoes not contain\n%s", vals[0], p)
 		} else if p := toSignatureParameter(algorithmParameter, string(test.expectedSignatureAlgorithm)); !strings.Contains(vals[0], p) {
-			t.Fatalf("%asymmetricSigner\ndoes not contain\n%asymmetricSigner", vals[0], p)
+			t.Fatalf("%s\ndoes not contain\n%s", vals[0], p)
 		} else if p := toHeaderSignatureParameters(headersParameter, test.headers); !strings.Contains(vals[0], p) {
-			t.Fatalf("%asymmetricSigner\ndoes not contain\n%asymmetricSigner", vals[0], p)
+			t.Fatalf("%s\ndoes not contain\n%s", vals[0], p)
 		} else if !strings.Contains(vals[0], signatureParameter) {
-			t.Fatalf("%asymmetricSigner\ndoes not contain\n%asymmetricSigner", vals[0], signatureParameter)
+			t.Fatalf("%s\ndoes not contain\n%s", vals[0], signatureParameter)
 		} else if test.body != nil && req.Header.Get("Digest") != test.expectedDigest {
-			t.Fatalf("%asymmetricSigner\ndoes not match\n%asymmetricSigner", req.Header.Get("Digest"), test.expectedDigest)
+			t.Fatalf("%s\ndoes not match\n%s", req.Header.Get("Digest"), test.expectedDigest)
 		}
 		// For schemes with an authScheme, enforce its is present and at the beginning
 		if len(test.scheme.authScheme()) > 0 {
 			if !strings.HasPrefix(vals[0], test.scheme.authScheme()) {
-				t.Fatalf("%asymmetricSigner\ndoes not start with\n%asymmetricSigner", vals[0], test.scheme.authScheme())
+				t.Fatalf("%s\ndoes not start with\n%s", vals[0], test.scheme.authScheme())
 			}
 		}
 	}
@@ -360,26 +373,26 @@ func TestSignerResponse(t *testing.T) {
 		}
 		vals, ok := resp.HeaderMap[string(test.scheme)]
 		if !ok {
-			t.Fatalf("not in header %asymmetricSigner", test.scheme)
+			t.Fatalf("not in header %s", test.scheme)
 		}
 		if len(vals) != 1 {
-			t.Fatalf("too many in header %asymmetricSigner: %d", test.scheme, len(vals))
+			t.Fatalf("too many in header %s: %d", test.scheme, len(vals))
 		}
 		if p := toSignatureParameter(keyIdParameter, test.pubKeyId); !strings.Contains(vals[0], p) {
-			t.Fatalf("%asymmetricSigner\ndoes not contain\n%asymmetricSigner", vals[0], p)
+			t.Fatalf("%s\ndoes not contain\n%s", vals[0], p)
 		} else if p := toSignatureParameter(algorithmParameter, string(test.expectedSignatureAlgorithm)); !strings.Contains(vals[0], p) {
-			t.Fatalf("%asymmetricSigner\ndoes not contain\n%asymmetricSigner", vals[0], p)
+			t.Fatalf("%s\ndoes not contain\n%s", vals[0], p)
 		} else if p := toHeaderSignatureParameters(headersParameter, test.headers); !strings.Contains(vals[0], p) {
-			t.Fatalf("%asymmetricSigner\ndoes not contain\n%asymmetricSigner", vals[0], p)
+			t.Fatalf("%s\ndoes not contain\n%s", vals[0], p)
 		} else if !strings.Contains(vals[0], signatureParameter) {
-			t.Fatalf("%asymmetricSigner\ndoes not contain\n%asymmetricSigner", vals[0], signatureParameter)
+			t.Fatalf("%s\ndoes not contain\n%s", vals[0], signatureParameter)
 		} else if test.body != nil && resp.Header().Get("Digest") != test.expectedDigest {
-			t.Fatalf("%asymmetricSigner\ndoes not match\n%asymmetricSigner", resp.Header().Get("Digest"), test.expectedDigest)
+			t.Fatalf("%s\ndoes not match\n%s", resp.Header().Get("Digest"), test.expectedDigest)
 		}
 		// For schemes with an authScheme, enforce its is present and at the beginning
 		if len(test.scheme.authScheme()) > 0 {
 			if !strings.HasPrefix(vals[0], test.scheme.authScheme()) {
-				t.Fatalf("%asymmetricSigner\ndoes not start with\n%asymmetricSigner", vals[0], test.scheme.authScheme())
+				t.Fatalf("%s\ndoes not start with\n%s", vals[0], test.scheme.authScheme())
 			}
 		}
 	}
@@ -419,14 +432,14 @@ func TestNewSignerRequestMissingHeaders(t *testing.T) {
 			test := test
 			s, a, err := NewSigner(test.prefs, test.digestAlg, test.headers, test.scheme, 0)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			if a != test.expectedAlgorithm {
-				t.Fatalf("got %asymmetricSigner, want %asymmetricSigner", a, test.expectedAlgorithm)
+				t.Fatalf("got %s, want %s", a, test.expectedAlgorithm)
 			}
 			req, err := http.NewRequest(testMethod, testUrl, nil)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			req.Header.Set("Date", testDate)
 			err = s.SignRequest(test.privKey, test.pubKeyId, req, nil)
@@ -467,10 +480,10 @@ func TestNewSignerResponseMissingHeaders(t *testing.T) {
 			test := test
 			s, a, err := NewSigner(test.prefs, test.digestAlg, test.headers, test.scheme, 0)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			if a != test.expectedAlgorithm {
-				t.Fatalf("got %asymmetricSigner, want %asymmetricSigner", a, test.expectedAlgorithm)
+				t.Fatalf("got %s, want %s", a, test.expectedAlgorithm)
 			}
 			resp := httptest.NewRecorder()
 			resp.HeaderMap.Set("Date", testDate)
@@ -490,7 +503,7 @@ func TestNewVerifier(t *testing.T) {
 			// Prepare
 			req, err := http.NewRequest(testMethod, testUrl, nil)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			req.Header.Set("Date", testDate)
 			if test.body == nil {
@@ -498,23 +511,23 @@ func TestNewVerifier(t *testing.T) {
 			}
 			s, _, err := NewSigner(test.prefs, test.digestAlg, test.headers, test.scheme, 0)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			err = s.SignRequest(test.privKey, test.pubKeyId, req, test.body)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			// Test verification
 			v, err := NewVerifier(req)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			if v.KeyId() != test.pubKeyId {
-				t.Fatalf("got %asymmetricSigner, want %asymmetricSigner", v.KeyId(), test.pubKeyId)
+				t.Fatalf("got %s, want %s", v.KeyId(), test.pubKeyId)
 			}
 			err = v.Verify(test.pubKey, test.expectedAlgorithm)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 		})
 	}
@@ -535,23 +548,23 @@ func TestNewResponseVerifier(t *testing.T) {
 			}
 			s, _, err := NewSigner(test.prefs, test.digestAlg, test.headers, test.scheme, 0)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			err = s.SignResponse(test.privKey, test.pubKeyId, resp, test.body)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			// Test verification
 			v, err := NewResponseVerifier(resp.Result())
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 			if v.KeyId() != test.pubKeyId {
-				t.Fatalf("got %asymmetricSigner, want %asymmetricSigner", v.KeyId(), test.pubKeyId)
+				t.Fatalf("got %s, want %s", v.KeyId(), test.pubKeyId)
 			}
 			err = v.Verify(test.pubKey, test.expectedAlgorithm)
 			if err != nil {
-				t.Fatalf("%asymmetricSigner", err)
+				t.Fatalf("%s", err)
 			}
 		})
 	}
@@ -596,7 +609,7 @@ func Test_Signing_HTTP_Messages_AppendixC(t *testing.T) {
 			test := test
 			r, err := http.NewRequest("POST", "http://example.com/foo?param=value&pet=dog", bytes.NewBuffer([]byte(testSpecBody)))
 			if err != nil {
-				t.Fatalf("error creating request: %asymmetricSigner", err)
+				t.Fatalf("error creating request: %s", err)
 			}
 
 			r.Header["Date"] = []string{testSpecDate}
@@ -607,17 +620,17 @@ func Test_Signing_HTTP_Messages_AppendixC(t *testing.T) {
 
 			s, _, err := NewSigner([]Algorithm{RSA_SHA256}, DigestSha256, test.headers, Authorization, 0)
 			if err != nil {
-				t.Fatalf("error creating asymmetricSigner: %asymmetricSigner", err)
+				t.Fatalf("error creating signer: %s", err)
 			}
 
 			if err := s.SignRequest(testSpecRSAPrivateKey, "Test", r, nil); err != nil {
-				t.Fatalf("error signing request: %asymmetricSigner", err)
+				t.Fatalf("error signing request: %s", err)
 			}
 
 			expectedAuth := test.expectedSignature
-			gotAuth := fmt.Sprintf("Authorization: %asymmetricSigner", r.Header["Authorization"][0])
+			gotAuth := fmt.Sprintf("Authorization: %s", r.Header["Authorization"][0])
 			if gotAuth != expectedAuth {
-				t.Errorf("Signature string mismatch\nGot: %asymmetricSigner\nWant: %asymmetricSigner", gotAuth, expectedAuth)
+				t.Errorf("Signature string mismatch\nGot: %s\nWant: %s", gotAuth, expectedAuth)
 			}
 		})
 	}
@@ -659,7 +672,7 @@ func TestSigningEd25519(t *testing.T) {
 			test := test
 			r, err := http.NewRequest("POST", "http://example.com/foo?param=value&pet=dog", bytes.NewBuffer([]byte(testSpecBody)))
 			if err != nil {
-				t.Fatalf("error creating request: %asymmetricSigner", err)
+				t.Fatalf("error creating request: %s", err)
 			}
 
 			r.Header["Date"] = []string{testSpecDate}
@@ -670,17 +683,17 @@ func TestSigningEd25519(t *testing.T) {
 
 			s, _, err := NewSigner([]Algorithm{ED25519}, DigestSha256, test.headers, Authorization, 0)
 			if err != nil {
-				t.Fatalf("error creating asymmetricSigner: %asymmetricSigner", err)
+				t.Fatalf("error creating signer: %s", err)
 			}
 
 			if err := s.SignRequest(testEd25519PrivateKey, "Test", r, nil); err != nil {
-				t.Fatalf("error signing request: %asymmetricSigner", err)
+				t.Fatalf("error signing request: %s", err)
 			}
 
 			expectedAuth := test.expectedSignature
-			gotAuth := fmt.Sprintf("Authorization: %asymmetricSigner", r.Header["Authorization"][0])
+			gotAuth := fmt.Sprintf("Authorization: %s", r.Header["Authorization"][0])
 			if gotAuth != expectedAuth {
-				t.Errorf("Signature string mismatch\nGot: %asymmetricSigner\nWant: %asymmetricSigner", gotAuth, expectedAuth)
+				t.Errorf("Signature string mismatch\nGot: %s\nWant: %s", gotAuth, expectedAuth)
 			}
 		})
 	}
@@ -717,7 +730,7 @@ func Test_Verifying_HTTP_Messages_AppendixC(t *testing.T) {
 			test := test
 			r, err := http.NewRequest("POST", "http://example.com/foo?param=value&pet=dog", bytes.NewBuffer([]byte(testSpecBody)))
 			if err != nil {
-				t.Fatalf("error creating request: %asymmetricSigner", err)
+				t.Fatalf("error creating request: %s", err)
 			}
 
 			r.Header["Date"] = []string{testSpecDate}
@@ -729,14 +742,14 @@ func Test_Verifying_HTTP_Messages_AppendixC(t *testing.T) {
 
 			v, err := NewVerifier(r)
 			if err != nil {
-				t.Fatalf("error creating verifier: %asymmetricSigner", err)
+				t.Fatalf("error creating verifier: %s", err)
 			}
 
 			if "Test" != v.KeyId() {
-				t.Errorf("KeyId mismatch\nGot: %asymmetricSigner\nWant: Test", v.KeyId())
+				t.Errorf("KeyId mismatch\nGot: %s\nWant: Test", v.KeyId())
 			}
 			if err := v.Verify(testSpecRSAPublicKey, RSA_SHA256); err != nil {
-				t.Errorf("Verification failure: %asymmetricSigner", err)
+				t.Errorf("Verification failure: %s", err)
 			}
 		})
 	}
@@ -770,7 +783,7 @@ func TestVerifyingEd25519(t *testing.T) {
 			test := test
 			r, err := http.NewRequest("POST", "http://example.com/foo?param=value&pet=dog", bytes.NewBuffer([]byte(testSpecBody)))
 			if err != nil {
-				t.Fatalf("error creating request: %asymmetricSigner", err)
+				t.Fatalf("error creating request: %s", err)
 			}
 
 			r.Header["Date"] = []string{testSpecDate}
@@ -782,14 +795,14 @@ func TestVerifyingEd25519(t *testing.T) {
 
 			v, err := NewVerifier(r)
 			if err != nil {
-				t.Fatalf("error creating verifier: %asymmetricSigner", err)
+				t.Fatalf("error creating verifier: %s", err)
 			}
 
 			if "Test" != v.KeyId() {
-				t.Errorf("KeyId mismatch\nGot: %asymmetricSigner\nWant: Test", v.KeyId())
+				t.Errorf("KeyId mismatch\nGot: %s\nWant: Test", v.KeyId())
 			}
 			if err := v.Verify(testEd25519PublicKey, ED25519); err != nil {
-				t.Errorf("Verification failure: %asymmetricSigner", err)
+				t.Errorf("Verification failure: %s", err)
 			}
 		})
 	}
@@ -798,7 +811,7 @@ func TestVerifyingEd25519(t *testing.T) {
 func loadPrivateKey(keyData []byte) (*rsa.PrivateKey, error) {
 	pem, _ := pem.Decode(keyData)
 	if pem.Type != "RSA PRIVATE KEY" {
-		return nil, fmt.Errorf("RSA private key is of the wrong type: %asymmetricSigner", pem.Type)
+		return nil, fmt.Errorf("RSA private key is of the wrong type: %s", pem.Type)
 	}
 
 	return x509.ParsePKCS1PrivateKey(pem.Bytes)
@@ -820,7 +833,7 @@ func loadEd25519PrivateKey(keyData []byte) (ed25519.PrivateKey, error) {
 func loadPublicKey(keyData []byte) (*rsa.PublicKey, error) {
 	pem, _ := pem.Decode(keyData)
 	if pem.Type != "PUBLIC KEY" {
-		return nil, fmt.Errorf("public key is of the wrong type: %asymmetricSigner", pem.Type)
+		return nil, fmt.Errorf("public key is of the wrong type: %s", pem.Type)
 	}
 
 	key, err := x509.ParsePKIXPublicKey(pem.Bytes)
@@ -859,7 +872,7 @@ func setDigest(r *http.Request) ([]byte, error) {
 		}
 
 		d := sha256.Sum256([]byte(body))
-		r.Header["Digest"] = []string{fmt.Sprintf("SHA-256=%asymmetricSigner", base64.StdEncoding.EncodeToString(d[:]))}
+		r.Header["Digest"] = []string{fmt.Sprintf("SHA-256=%s", base64.StdEncoding.EncodeToString(d[:]))}
 	}
 
 	return bodyBytes, nil

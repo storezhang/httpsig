@@ -1,7 +1,6 @@
 package httpsig
 
 import (
-	"bytes"
 	"fmt"
 	"net/http"
 	"net/textproto"
@@ -14,10 +13,10 @@ const (
 	algorithmParameter            = "algorithm"
 	headersParameter              = "headers"
 	signatureParameter            = "signature"
-	prefixSeparater               = " "
-	parameterKVSeparater          = "="
+	prefixSeparator               = " "
+	parameterKVSeparator          = "="
 	parameterValueDelimiter       = "\""
-	parameterSeparater            = ","
+	parameterSeparator            = ","
 	headerParameterValueDelimiter = " "
 
 	RequestTarget = "(request-target)"
@@ -33,35 +32,34 @@ const (
 
 var defaultHeaders = []string{dateHeader}
 
-var _ Signer = &signerSymmetric{}
-
-var _ Signer = &signerAsymmetric{}
-
-var _ SSHSigner = &sshSignerAsymmetric{}
-
-func setSignatureHeader(h http.Header, targetHeader, prefix, pubKeyId, algo, enc string, headers []string, created int64, expires int64) {
-	if len(headers) == 0 {
+func setSignatureHeader(
+	header http.Header, targetHeader string,
+	prefix string, keyId string, alg string, enc string, created int64, expires int64, headers ...string,
+) {
+	if 0 == len(headers) {
 		headers = defaultHeaders
 	}
-	var b bytes.Buffer
-	// KeyId
-	b.WriteString(prefix)
-	if len(prefix) > 0 {
-		b.WriteString(prefixSeparater)
+
+	var sb strings.Builder
+	sb.WriteString(prefix)
+	if 0 < len(prefix) {
+		sb.WriteString(prefixSeparator)
 	}
-	b.WriteString(keyIdParameter)
-	b.WriteString(parameterKVSeparater)
-	b.WriteString(parameterValueDelimiter)
-	b.WriteString(pubKeyId)
-	b.WriteString(parameterValueDelimiter)
-	b.WriteString(parameterSeparater)
-	// Algorithm
-	b.WriteString(algorithmParameter)
-	b.WriteString(parameterKVSeparater)
-	b.WriteString(parameterValueDelimiter)
-	b.WriteString("hs2019") // real algorithm is hidden, see newest version of spec draft
-	b.WriteString(parameterValueDelimiter)
-	b.WriteString(parameterSeparater)
+	sb.WriteString(keyIdParameter)
+	sb.WriteString(parameterKVSeparator)
+	sb.WriteString(parameterValueDelimiter)
+	sb.WriteString(keyId)
+	sb.WriteString(parameterValueDelimiter)
+	sb.WriteString(parameterSeparator)
+
+	sb.WriteString(algorithmParameter)
+	sb.WriteString(parameterKVSeparator)
+	sb.WriteString(parameterValueDelimiter)
+	// 最新的协议要求，隐藏真实的算法
+	alg = "hs2019"
+	sb.WriteString(alg)
+	sb.WriteString(parameterValueDelimiter)
+	sb.WriteString(parameterSeparator)
 
 	hasCreated := false
 	hasExpires := false
@@ -74,107 +72,116 @@ func setSignatureHeader(h http.Header, targetHeader, prefix, pubKeyId, algo, enc
 		}
 	}
 
-	// Created
-	if hasCreated == true {
-		b.WriteString(createdKey)
-		b.WriteString(parameterKVSeparater)
-		b.WriteString(strconv.FormatInt(created, 10))
-		b.WriteString(parameterSeparater)
+	if hasCreated {
+		sb.WriteString(createdKey)
+		sb.WriteString(parameterKVSeparator)
+		sb.WriteString(strconv.FormatInt(created, 10))
+		sb.WriteString(parameterSeparator)
 	}
 
-	// Expires
-	if hasExpires == true {
-		b.WriteString(expiresKey)
-		b.WriteString(parameterKVSeparater)
-		b.WriteString(strconv.FormatInt(expires, 10))
-		b.WriteString(parameterSeparater)
+	if hasExpires {
+		sb.WriteString(expiresKey)
+		sb.WriteString(parameterKVSeparator)
+		sb.WriteString(strconv.FormatInt(expires, 10))
+		sb.WriteString(parameterSeparator)
 	}
 
-	// Headers
-	b.WriteString(headersParameter)
-	b.WriteString(parameterKVSeparater)
-	b.WriteString(parameterValueDelimiter)
+	sb.WriteString(headersParameter)
+	sb.WriteString(parameterKVSeparator)
+	sb.WriteString(parameterValueDelimiter)
 	for i, h := range headers {
-		b.WriteString(strings.ToLower(h))
+		sb.WriteString(strings.ToLower(h))
 		if i != len(headers)-1 {
-			b.WriteString(headerParameterValueDelimiter)
+			sb.WriteString(headerParameterValueDelimiter)
 		}
 	}
-	b.WriteString(parameterValueDelimiter)
-	b.WriteString(parameterSeparater)
-	// Signature
-	b.WriteString(signatureParameter)
-	b.WriteString(parameterKVSeparater)
-	b.WriteString(parameterValueDelimiter)
-	b.WriteString(enc)
-	b.WriteString(parameterValueDelimiter)
-	h.Add(targetHeader, b.String())
+	sb.WriteString(parameterValueDelimiter)
+	sb.WriteString(parameterSeparator)
+
+	sb.WriteString(signatureParameter)
+	sb.WriteString(parameterKVSeparator)
+	sb.WriteString(parameterValueDelimiter)
+	sb.WriteString(enc)
+	sb.WriteString(parameterValueDelimiter)
+
+	header.Add(targetHeader, sb.String())
 }
 
-func requestTargetNotPermitted(b *bytes.Buffer) error {
-	return fmt.Errorf("cannot sign with %q on anything other than an http request", RequestTarget)
+func requestTargetNotPermitted(sb *strings.Builder) error {
+	return fmt.Errorf("不能签名Http外的请求：%q", RequestTarget)
 }
 
-func addRequestTarget(r *http.Request) func(b *bytes.Buffer) error {
-	return func(b *bytes.Buffer) error {
-		b.WriteString(RequestTarget)
-		b.WriteString(headerFieldDelimiter)
-		b.WriteString(strings.ToLower(r.Method))
-		b.WriteString(requestTargetSeparator)
-		b.WriteString(r.URL.Path)
+func addRequestTarget(r *http.Request) func(sb *strings.Builder) (err error) {
+	return func(sb *strings.Builder) (err error) {
+		sb.WriteString(RequestTarget)
+		sb.WriteString(headerFieldDelimiter)
+		sb.WriteString(strings.ToLower(r.Method))
+		sb.WriteString(requestTargetSeparator)
+		sb.WriteString(r.URL.Path)
 
-		if r.URL.RawQuery != "" {
-			b.WriteString("?")
-			b.WriteString(r.URL.RawQuery)
+		if "" != r.URL.RawQuery {
+			sb.WriteString("?")
+			sb.WriteString(r.URL.RawQuery)
 		}
 
-		return nil
+		return
 	}
 }
 
-func signatureString(values http.Header, include []string, requestTargetFn func(b *bytes.Buffer) error, created int64, expires int64) (string, error) {
-	if len(include) == 0 {
-		include = defaultHeaders
+func signatureString(
+	header http.Header,
+	requestTargetFn func(sb *strings.Builder) error,
+	created int64, expires int64,
+	includes ...string,
+) (signature string, err error) {
+	if 0 == len(includes) {
+		includes = defaultHeaders
 	}
-	var b bytes.Buffer
-	for n, i := range include {
-		i := strings.ToLower(i)
-		if i == RequestTarget {
-			err := requestTargetFn(&b)
-			if err != nil {
-				return "", err
+
+	var sb strings.Builder
+	for index, include := range includes {
+		include = strings.ToLower(include)
+		if include == RequestTarget {
+			if err = requestTargetFn(&sb); nil != err {
+				return
 			}
-		} else if i == "("+expiresKey+")" {
-			if expires == 0 {
-				return "", fmt.Errorf("missing expires value")
+		} else if include == "("+expiresKey+")" {
+			if 0 == expires {
+				err = fmt.Errorf("未设置过期时间")
+
+				return
 			}
-			b.WriteString(i)
-			b.WriteString(headerFieldDelimiter)
-			b.WriteString(strconv.FormatInt(expires, 10))
-		} else if i == "("+createdKey+")" {
-			if created == 0 {
-				return "", fmt.Errorf("missing created value")
+			sb.WriteString(include)
+			sb.WriteString(headerFieldDelimiter)
+			sb.WriteString(strconv.FormatInt(expires, 10))
+		} else if include == "("+createdKey+")" {
+			if 0 == created {
+				err = fmt.Errorf("未设置创建时间")
+
+				return
 			}
-			b.WriteString(i)
-			b.WriteString(headerFieldDelimiter)
-			b.WriteString(strconv.FormatInt(created, 10))
+			sb.WriteString(include)
+			sb.WriteString(headerFieldDelimiter)
+			sb.WriteString(strconv.FormatInt(created, 10))
 		} else {
-			hv, ok := values[textproto.CanonicalMIMEHeaderKey(i)]
+			headerValues, ok := header[textproto.CanonicalMIMEHeaderKey(include)]
 			if !ok {
-				return "", fmt.Errorf("missing header %q", i)
+				err = fmt.Errorf("缺失请求头：%q", include)
 			}
-			b.WriteString(i)
-			b.WriteString(headerFieldDelimiter)
-			for i, v := range hv {
-				b.WriteString(strings.TrimSpace(v))
-				if i < len(hv)-1 {
-					b.WriteString(headerValueDelimiter)
+			sb.WriteString(include)
+			sb.WriteString(headerFieldDelimiter)
+			for i, headerValue := range headerValues {
+				sb.WriteString(strings.TrimSpace(headerValue))
+				if i < len(headerValues)-1 {
+					sb.WriteString(headerValueDelimiter)
 				}
 			}
 		}
-		if n < len(include)-1 {
-			b.WriteString(headersDelimiter)
+		if index < len(includes)-1 {
+			sb.WriteString(headersDelimiter)
 		}
 	}
-	return b.String(), nil
+	signature = sb.String()
+
+	return
 }

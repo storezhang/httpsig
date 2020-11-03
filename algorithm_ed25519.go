@@ -62,5 +62,5 @@ func (ae *algorithmEd25519) Verify(publicKey crypto.PublicKey, toHash []byte, si
 }
 
 func (ae *algorithmEd25519) String() string {
-	return fmt.Sprintf("%asymmetricSigner", ed25519Prefix)
+	return fmt.Sprintf("%s", ed25519Prefix)
 }

@@ -1,46 +1,37 @@
-// Implements HTTP request and response signing and verification. Supports the
-// major MAC and asymmetric key signature algorithms. It has several safety
-// restrictions: One, none of the widely known non-cryptographically safe
-// algorithms are permitted; Two, the RSA SHA256 algorithms must be available in
-// the binary (and it should, barring export restrictions); Finally, the library
-// assumes either the 'Authorizationn' or 'Signature' headers are to be set (but
-// not both).
 package httpsig
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
 )
 
-// Algorithm specifies a cryptography secure algorithm for signing HTTP requests
-// and responses.
+// Algorithm 算法
 type Algorithm string
 
 const (
-	// MAC-based algoirthms.
+	// MAC类型算法
 	HMAC_SHA224      Algorithm = hmacPrefix + "-" + sha224String
 	HMAC_SHA256      Algorithm = hmacPrefix + "-" + sha256String
 	HMAC_SHA384      Algorithm = hmacPrefix + "-" + sha384String
 	HMAC_SHA512      Algorithm = hmacPrefix + "-" + sha512String
 	HMAC_RIPEMD160   Algorithm = hmacPrefix + "-" + ripemd160String
-	HMAC_SHA3_224    Algorithm = hmacPrefix + "-" + sha3_224String
-	HMAC_SHA3_256    Algorithm = hmacPrefix + "-" + sha3_256String
-	HMAC_SHA3_384    Algorithm = hmacPrefix + "-" + sha3_384String
-	HMAC_SHA3_512    Algorithm = hmacPrefix + "-" + sha3_512String
-	HMAC_SHA512_224  Algorithm = hmacPrefix + "-" + sha512_224String
-	HMAC_SHA512_256  Algorithm = hmacPrefix + "-" + sha512_256String
-	HMAC_BLAKE2S_256 Algorithm = hmacPrefix + "-" + blake2s_256String
-	HMAC_BLAKE2B_256 Algorithm = hmacPrefix + "-" + blake2b_256String
-	HMAC_BLAKE2B_384 Algorithm = hmacPrefix + "-" + blake2b_384String
-	HMAC_BLAKE2B_512 Algorithm = hmacPrefix + "-" + blake2b_512String
-	BLAKE2S_256      Algorithm = blake2s_256String
-	BLAKE2B_256      Algorithm = blake2b_256String
-	BLAKE2B_384      Algorithm = blake2b_384String
-	BLAKE2B_512      Algorithm = blake2b_512String
-	// RSA-based algorithms.
+	HMAC_SHA3_224    Algorithm = hmacPrefix + "-" + sha3With224String
+	HMAC_SHA3_256    Algorithm = hmacPrefix + "-" + sha3With256String
+	HMAC_SHA3_384    Algorithm = hmacPrefix + "-" + sha3With384String
+	HMAC_SHA3_512    Algorithm = hmacPrefix + "-" + sha3With512String
+	HMAC_SHA512_224  Algorithm = hmacPrefix + "-" + sha512With224String
+	HMAC_SHA512_256  Algorithm = hmacPrefix + "-" + sha512With256String
+	HMAC_BLAKE2S_256 Algorithm = hmacPrefix + "-" + blake2sWith256String
+	HMAC_BLAKE2B_256 Algorithm = hmacPrefix + "-" + blake2bWith256String
+	HMAC_BLAKE2B_384 Algorithm = hmacPrefix + "-" + blake2bWith384String
+	HMAC_BLAKE2B_512 Algorithm = hmacPrefix + "-" + blake2bWith512String
+	BLAKE2S_256      Algorithm = blake2sWith256String
+	BLAKE2B_256      Algorithm = blake2bWith256String
+	BLAKE2B_384      Algorithm = blake2bWith384String
+	BLAKE2B_512      Algorithm = blake2bWith512String
+	// RSA类型算法
 	RSA_SHA1   Algorithm = rsaPrefix + "-" + sha1String
 	RSA_SHA224 Algorithm = rsaPrefix + "-" + sha224String
 	// RSA_SHA256 is the default algorithm.
@@ -48,7 +39,7 @@ const (
 	RSA_SHA384    Algorithm = rsaPrefix + "-" + sha384String
 	RSA_SHA512    Algorithm = rsaPrefix + "-" + sha512String
 	RSA_RIPEMD160 Algorithm = rsaPrefix + "-" + ripemd160String
-	// ECDSA algorithms
+	// ECDSA类型算法
 	ECDSA_SHA224    Algorithm = ecdsaPrefix + "-" + sha224String
 	ECDSA_SHA256    Algorithm = ecdsaPrefix + "-" + sha256String
 	ECDSA_SHA384    Algorithm = ecdsaPrefix + "-" + sha384String
@@ -60,55 +51,58 @@ const (
 
 	// Just because you can glue things together, doesn't mean they will
 	// work. The following options are not supported.
-	rsa_SHA3_224    Algorithm = rsaPrefix + "-" + sha3_224String
-	rsa_SHA3_256    Algorithm = rsaPrefix + "-" + sha3_256String
-	rsa_SHA3_384    Algorithm = rsaPrefix + "-" + sha3_384String
-	rsa_SHA3_512    Algorithm = rsaPrefix + "-" + sha3_512String
-	rsa_SHA512_224  Algorithm = rsaPrefix + "-" + sha512_224String
-	rsa_SHA512_256  Algorithm = rsaPrefix + "-" + sha512_256String
-	rsa_BLAKE2S_256 Algorithm = rsaPrefix + "-" + blake2s_256String
-	rsa_BLAKE2B_256 Algorithm = rsaPrefix + "-" + blake2b_256String
-	rsa_BLAKE2B_384 Algorithm = rsaPrefix + "-" + blake2b_384String
-	rsa_BLAKE2B_512 Algorithm = rsaPrefix + "-" + blake2b_512String
+	rsa_SHA3_224    Algorithm = rsaPrefix + "-" + sha3With224String
+	rsa_SHA3_256    Algorithm = rsaPrefix + "-" + sha3With256String
+	rsa_SHA3_384    Algorithm = rsaPrefix + "-" + sha3With384String
+	rsa_SHA3_512    Algorithm = rsaPrefix + "-" + sha3With512String
+	rsa_SHA512_224  Algorithm = rsaPrefix + "-" + sha512With224String
+	rsa_SHA512_256  Algorithm = rsaPrefix + "-" + sha512With256String
+	rsa_BLAKE2S_256 Algorithm = rsaPrefix + "-" + blake2sWith256String
+	rsa_BLAKE2B_256 Algorithm = rsaPrefix + "-" + blake2bWith256String
+	rsa_BLAKE2B_384 Algorithm = rsaPrefix + "-" + blake2bWith384String
+	rsa_BLAKE2B_512 Algorithm = rsaPrefix + "-" + blake2bWith512String
 )
 
-func getSSHAlgorithm(pkType string) Algorithm {
+func getSSHAlgorithm(pkType string) (algorithm Algorithm) {
 	switch {
 	case strings.HasPrefix(pkType, sshPrefix+"-"+ed25519Prefix):
-		return ED25519
+		algorithm = ED25519
 	case strings.HasPrefix(pkType, sshPrefix+"-"+rsaPrefix):
-		return RSA_SHA1
+		algorithm = RSA_SHA1
+	default:
+		algorithm = ""
 	}
 
-	return ""
+	return
 }
 
-// Verifier verifies HTTP Signatures.
-//
-// It will determine which of the supported headers has the parameters
-// that define the signature.
-//
-// Verifiers are not safe to use between multiple goroutines.
-//
-// Note that verification ignores the deprecated 'algorithm' parameter.
+func newSSHSigner(
+	ssh ssh.Signer,
+	alg Algorithm,
+	digest DigestAlgorithm,
+	headers []string,
+	scheme SignatureScheme,
+	expiresIn int64,
+) (signer SSHSigner, err error) {
+	var (
+		expires int64 = 0
+		created int64 = 0
+	)
 
-func newSSHSigner(sshSigner ssh.Signer, algo Algorithm, dAlgo DigestAlgorithm, headers []string, scheme SignatureScheme, expiresIn int64) (SSHSigner, error) {
-	var expires, created int64 = 0, 0
-
-	if expiresIn != 0 {
+	if 0 != expiresIn {
 		created = time.Now().Unix()
 		expires = created + expiresIn
 	}
 
-	s, err := signerFromSSHSigner(sshSigner, string(algo))
-	if err != nil {
-		return nil, fmt.Errorf("no crypto implementation available for ssh algo %q", algo)
+	var asymmetric asymmetric
+	if asymmetric, err = asymmetricFromSSHSigner(ssh, string(alg)); nil != err {
+		return
 	}
 
-	a := &sshSignerAsymmetric{
+	signer = &sshSignerAsymmetric{
 		signerAsymmetric: &signerAsymmetric{
-			signer:          s,
-			digestAlgorithm: dAlgo,
+			signer:          asymmetric,
+			digestAlgorithm: digest,
 			headers:         headers,
 			scheme:          scheme,
 			prefix:          scheme.authScheme(),
@@ -117,42 +111,55 @@ func newSSHSigner(sshSigner ssh.Signer, algo Algorithm, dAlgo DigestAlgorithm, h
 		},
 	}
 
-	return a, nil
+	return
 }
 
-func newSigner(alg Algorithm, dAlgo DigestAlgorithm, headers []string, scheme SignatureScheme, expiresIn int64) (Signer, error) {
+func newSigner(
+	alg Algorithm,
+	digest DigestAlgorithm,
+	headers []string,
+	scheme SignatureScheme,
+	expiresIn int64,
+) (signer Signer, err error) {
+	var (
+		expires int64 = 0
+		created int64 = 0
+	)
 
-	var expires, created int64 = 0, 0
-	if expiresIn != 0 {
+	if 0 != expiresIn {
 		created = time.Now().Unix()
 		expires = created + expiresIn
 	}
 
-	s, err := signerFromString(string(alg))
-	if err == nil {
-		a := &signerAsymmetric{
-			signer:          s,
-			digestAlgorithm: dAlgo,
+	var asymmetric asymmetric
+	if asymmetric, err = asymmetricFromString(string(alg)); nil == err {
+		signer = &signerAsymmetric{
+			signer:          asymmetric,
+			digestAlgorithm: digest,
 			headers:         headers,
 			scheme:          scheme,
 			prefix:          scheme.authScheme(),
 			created:         created,
 			expires:         expires,
 		}
-		return a, nil
+
+		return
 	}
-	m, err := macerFromString(string(alg))
-	if err != nil {
-		return nil, fmt.Errorf("no crypto implementation available for %q", alg)
+
+	var symmetric symmetric
+	if symmetric, err = symmetricFromString(string(alg)); nil != err {
+		return
 	}
-	c := &signerSymmetric{
-		signer:       m,
-		dAlgo:        dAlgo,
+
+	signer = &signerSymmetric{
+		signer:       symmetric,
+		dAlgo:        digest,
 		headers:      headers,
 		targetHeader: scheme,
 		prefix:       scheme.authScheme(),
 		created:      created,
 		expires:      expires,
 	}
-	return c, nil
+
+	return
 }

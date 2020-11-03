@@ -44,5 +44,5 @@ func (abm *algorithmBlakeMac) Equal(sig []byte, actualMac []byte, key []byte) (e
 }
 
 func (abm *algorithmBlakeMac) String() string {
-	return fmt.Sprintf("%asymmetricSigner", hashToDef[abm.kind].name)
+	return fmt.Sprintf("%s", hashToDef[abm.kind].name)
 }

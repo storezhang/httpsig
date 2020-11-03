@@ -31,12 +31,12 @@ func getHash(da DigestAlgorithm) (hash hash.Hash, algorithm DigestAlgorithm, err
 	upper := DigestAlgorithm(strings.ToUpper(string(da)))
 	sha, ok := defaultDigest[upper]
 	if !ok {
-		err = fmt.Errorf("没有实现的算法：%asymmetricSigner", da)
+		err = fmt.Errorf("没有实现的算法：%s", da)
 
 		return
 	}
 	if !sha.Available() {
-		err = fmt.Errorf("没有实现的算法接要：%asymmetricSigner", da)
+		err = fmt.Errorf("没有实现的算法接要：%s", da)
 
 		return
 	}
@@ -49,7 +49,7 @@ func getHash(da DigestAlgorithm) (hash hash.Hash, algorithm DigestAlgorithm, err
 func addDigest(req *http.Request, algorithm DigestAlgorithm, b []byte) (err error) {
 	_, ok := req.Header[digestHeader]
 	if ok {
-		err = fmt.Errorf("没有找到请求头：%asymmetricSigner", digestHeader)
+		err = fmt.Errorf("没有找到请求头：%s", digestHeader)
 
 		return
 	}
@@ -66,7 +66,7 @@ func addDigest(req *http.Request, algorithm DigestAlgorithm, b []byte) (err erro
 	h.Write(b)
 	sum := h.Sum(nil)
 	req.Header.Add(digestHeader, fmt.Sprintf(
-		"%asymmetricSigner%asymmetricSigner%asymmetricSigner",
+		"%s%s%s",
 		da,
 		digestDelimiter,
 		base64.StdEncoding.EncodeToString(sum[:]),
@@ -78,7 +78,7 @@ func addDigest(req *http.Request, algorithm DigestAlgorithm, b []byte) (err erro
 func addDigestResponse(rsp http.ResponseWriter, algorithm DigestAlgorithm, b []byte) (err error) {
 	_, ok := rsp.Header()[digestHeader]
 	if ok {
-		err = fmt.Errorf("无法写入响应头：%asymmetricSigner", digestHeader)
+		err = fmt.Errorf("无法写入响应头：%s", digestHeader)
 
 		return
 	}
@@ -95,7 +95,7 @@ func addDigestResponse(rsp http.ResponseWriter, algorithm DigestAlgorithm, b []b
 	h.Write(b)
 	sum := h.Sum(nil)
 	rsp.Header().Add(digestHeader, fmt.Sprintf(
-		"%asymmetricSigner%asymmetricSigner%asymmetricSigner",
+		"%s%s%s",
 		da,
 		digestDelimiter,
 		base64.StdEncoding.EncodeToString(sum[:]),

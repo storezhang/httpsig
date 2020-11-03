@@ -3,6 +3,7 @@ package httpsig
 import (
 	`crypto`
 	`crypto/rsa`
+	`errors`
 	`fmt`
 	`hash`
 	`io`
@@ -33,7 +34,15 @@ func (ar *algorithmRsa) Sign(rand io.Reader, privateKey crypto.PrivateKey, sig [
 	if err = ar.setSig(sig); nil != err {
 		return
 	}
-	data, err = rsa.SignPKCS1v15(rand, privateKey.(*rsa.PrivateKey), ar.kind, ar.Sum(nil))
+
+	key, ok := privateKey.(*rsa.PrivateKey)
+	if !ok {
+		err = errors.New("privateKey不是rsa.PrivateKey类型")
+
+		return
+	}
+
+	data, err = rsa.SignPKCS1v15(rand, key, ar.kind, ar.Sum(nil))
 
 	return
 }
@@ -44,13 +53,19 @@ func (ar *algorithmRsa) Verify(publicKey crypto.PublicKey, toHash []byte, signat
 		return
 	}
 
-	err = rsa.VerifyPKCS1v15(publicKey.(*rsa.PublicKey), ar.kind, ar.Sum(nil), signature)
+	key, ok := publicKey.(*rsa.PublicKey)
+	if !ok {
+		err = errors.New("privateKey不是rsa.PrivateKey类型")
+
+		return
+	}
+	err = rsa.VerifyPKCS1v15(key, ar.kind, ar.Sum(nil), signature)
 
 	return
 }
 
 func (ar *algorithmRsa) String() string {
-	return fmt.Sprintf("%asymmetricSigner-%asymmetricSigner", rsaPrefix, hashToDef[ar.kind].name)
+	return fmt.Sprintf("%s-%s", rsaPrefix, hashToDef[ar.kind].name)
 }
 
 func (ar *algorithmRsa) setSig(sig []byte) (err error) {

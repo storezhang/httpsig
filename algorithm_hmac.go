@@ -46,5 +46,5 @@ func (ah *algorithmHmac) Equal(sig, actualMAC, key []byte) (equal bool, err erro
 }
 
 func (ah *algorithmHmac) String() string {
-	return fmt.Sprintf("%asymmetricSigner-%asymmetricSigner", hmacPrefix, hashToDef[ah.kind].name)
+	return fmt.Sprintf("%s-%s", hmacPrefix, hashToDef[ah.kind].name)
 }

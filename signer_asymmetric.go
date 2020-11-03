@@ -8,7 +8,7 @@ import (
 )
 
 type signerAsymmetric struct {
-	signer          asymmetricSigner
+	signer          asymmetric
 	makeDigest      bool
 	digestAlgorithm DigestAlgorithm
 	headers         []string
@@ -33,7 +33,7 @@ func (sa *signerAsymmetric) SignRequest(pKey crypto.PrivateKey, pubKeyId string,
 	if err != nil {
 		return err
 	}
-	setSignatureHeader(r.Header, string(sa.scheme), sa.prefix, pubKeyId, sa.signer.String(), enc, sa.headers, sa.created, sa.expires)
+	setSignatureHeader(r.Header, string(sa.scheme), sa.prefix, pubKeyId, sa.signer.String(), enc, sa.created, sa.expires, sa.headers...)
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (sa *signerAsymmetric) SignResponse(pKey crypto.PrivateKey, pubKeyId string
 	if err != nil {
 		return err
 	}
-	setSignatureHeader(r.Header(), string(sa.scheme), sa.prefix, pubKeyId, sa.signer.String(), enc, sa.headers, sa.created, sa.expires)
+	setSignatureHeader(r.Header(), string(sa.scheme), sa.prefix, pubKeyId, sa.signer.String(), enc, sa.created, sa.expires, sa.headers...)
 	return nil
 }
 
@@ -66,9 +66,9 @@ func (sa *signerAsymmetric) signSignature(pKey crypto.PrivateKey, s string) (str
 }
 
 func (sa *signerAsymmetric) signatureString(r *http.Request) (string, error) {
-	return signatureString(r.Header, sa.headers, addRequestTarget(r), sa.created, sa.expires)
+	return signatureString(r.Header, addRequestTarget(r), sa.created, sa.expires, sa.headers...)
 }
 
 func (sa *signerAsymmetric) signatureStringResponse(r http.ResponseWriter) (string, error) {
-	return signatureString(r.Header(), sa.headers, requestTargetNotPermitted, sa.created, sa.expires)
+	return signatureString(r.Header(), requestTargetNotPermitted, sa.created, sa.expires, sa.headers...)
 }

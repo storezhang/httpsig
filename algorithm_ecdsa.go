@@ -84,7 +84,7 @@ func (ae *algorithmEcdsa) Verify(publicKey crypto.PublicKey, toHash, signature [
 }
 
 func (ae *algorithmEcdsa) String() string {
-	return fmt.Sprintf("%asymmetricSigner-%asymmetricSigner", ecdsaPrefix, hashToDef[ae.kind].name)
+	return fmt.Sprintf("%s-%s", ecdsaPrefix, hashToDef[ae.kind].name)
 }
 
 func (ae *algorithmEcdsa) setSig(sig []byte) (err error) {

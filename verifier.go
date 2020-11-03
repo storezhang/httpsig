@@ -25,8 +25,8 @@ func NewVerifier(req *http.Request) (verifier Verifier, err error) {
 
 	return newVerifier(
 		req.Header,
-		func(header http.Header, toInclude []string, created int64, expires int64) (string, error) {
-			return signatureString(header, toInclude, addRequestTarget(req), created, expires)
+		func(header http.Header, includes []string, created int64, expires int64) (string, error) {
+			return signatureString(header, addRequestTarget(req), created, expires, includes...)
 		},
 	)
 }
@@ -34,8 +34,8 @@ func NewVerifier(req *http.Request) (verifier Verifier, err error) {
 func NewResponseVerifier(rsp *http.Response) (Verifier, error) {
 	return newVerifier(
 		rsp.Header,
-		func(h http.Header, toInclude []string, created int64, expires int64) (string, error) {
-			return signatureString(h, toInclude, requestTargetNotPermitted, created, expires)
+		func(h http.Header, includes []string, created int64, expires int64) (string, error) {
+			return signatureString(h, requestTargetNotPermitted, created, expires, includes...)
 		},
 	)
 }

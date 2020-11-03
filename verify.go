@@ -76,22 +76,22 @@ func (v *verifier) KeyId() string {
 }
 
 func (v *verifier) Verify(publicKey crypto.PublicKey, alg Algorithm) (err error) {
-	var signer asymmetricSigner
+	var signer asymmetric
 
-	if signer, err = signerFromString(string(alg)); nil != err {
+	if signer, err = asymmetricFromString(string(alg)); nil != err {
 		err = v.asymmVerify(signer, publicKey)
 
 		return
 	}
 
-	m, err := macerFromString(string(alg))
+	m, err := symmetricFromString(string(alg))
 	if err == nil {
 		return v.macVerify(m, publicKey)
 	}
 	return fmt.Errorf("no crypto implementation available for %q", alg)
 }
 
-func (v *verifier) macVerify(m symmetricSigner, pKey crypto.PublicKey) error {
+func (v *verifier) macVerify(m symmetric, pKey crypto.PublicKey) error {
 	key, ok := pKey.([]byte)
 	if !ok {
 		return fmt.Errorf("public key for MAC verifying must be of type []byte")
@@ -113,7 +113,7 @@ func (v *verifier) macVerify(m symmetricSigner, pKey crypto.PublicKey) error {
 	return nil
 }
 
-func (v *verifier) asymmVerify(s asymmetricSigner, pKey crypto.PublicKey) error {
+func (v *verifier) asymmVerify(s asymmetric, pKey crypto.PublicKey) error {
 	toHash, err := v.sigStringFn(v.header, v.headers, v.created, v.expires)
 	if err != nil {
 		return err
@@ -164,12 +164,12 @@ func getSignatureComponents(scheme SignatureScheme, value string) (
 	err error,
 ) {
 	if authScheme := scheme.authScheme(); len(authScheme) > 0 {
-		value = strings.TrimPrefix(value, authScheme+prefixSeparater)
+		value = strings.TrimPrefix(value, authScheme+prefixSeparator)
 	}
-	params := strings.Split(value, parameterSeparater)
+	params := strings.Split(value, parameterSeparator)
 
 	for _, param := range params {
-		kv := strings.SplitN(param, parameterKVSeparater, 2)
+		kv := strings.SplitN(param, parameterKVSeparator, 2)
 		if len(kv) != 2 {
 			err = fmt.Errorf("签名格式不正确：%signValue", kv)
 
